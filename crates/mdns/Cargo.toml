@@ -1,0 +1,8 @@
+[package]
+name = "mdns"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+mdns-sd = "0.13"
+tokio = { workspace = true, features = ["full"] }

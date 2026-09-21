@@ -1,0 +1,36 @@
+# devices.toml — 与路由器静态绑定表保持同步
+
+[[devices]]
+hostname = "esp32s3-n16r8"
+mac      = "30:ED:A0:33:0E:B8"
+ip       = "192.168.99.21"
+
+[[devices]]
+hostname = "nas-Default-string"
+mac      = "60:BE:B4:14:12:D0"
+ip       = "192.168.99.2"
+
+[[devices]]
+hostname = "Lei-WIFI"
+mac      = "40:EC:99:21:FE:E4"
+ip       = "192.168.99.14"
+
+[[devices]]
+hostname = "Lei"
+mac      = "A4:0C:66:10:EF:13"
+ip       = "192.168.99.4"
+
+[[devices]]
+hostname = "nas-eth"
+mac      = "1C:7E:51:A1:50:EB"
+ip       = "192.168.99.12"
+
+[[devices]]
+hostname = "WIN"
+mac      = "3C:7C:3F:4C:C3:CA"
+ip       = "192.168.99.3"
+
+[[devices]]
+hostname = "WIN-WIFI"
+mac      = "4C:44:5B:44:04:03"
+ip       = "192.168.99.13"

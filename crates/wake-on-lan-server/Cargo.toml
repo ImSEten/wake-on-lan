@@ -1,0 +1,19 @@
+[package]
+name = "wake-on-lan-server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["full"], optional = true }
+async-trait = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+toml = "0.8.2"
+
+common = { path = "../common" }
+backend = { path = "../backend" }
+
+[features]
+connect = ["async-trait", "tokio"]
+default = ["connect"]

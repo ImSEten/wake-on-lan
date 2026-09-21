@@ -5,5 +5,4 @@ edition.workspace = true
 
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
-tonic = { workspace = true }
 async-trait = { workspace = true }
