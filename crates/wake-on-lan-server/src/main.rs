@@ -72,7 +72,10 @@ async fn async_main() {
             json_file,
         }) => {
             let wol_server = WOLServer::new(ip.clone(), port, json_file.clone());
-            println!("service starting on {}:{}, saved_json_file: {}", ip, port, json_file);
+            println!(
+                "service starting on {}:{}, saved_json_file: {}",
+                ip, port, json_file
+            );
             create_service(wol_server).await;
             println!("service exited");
         }
