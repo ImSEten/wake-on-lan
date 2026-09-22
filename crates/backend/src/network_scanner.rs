@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::net::Ipv4Addr;
 use std::process::Command;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::{Mutex, Semaphore};
 
 /// 扫描局域网中的所有IP、MAC和hostname
@@ -24,18 +24,15 @@ const CONCURRENCY_LIMIT: usize = 32;
 
 /// 扫描单个 IP：ping 判断在线 -> 取 MAC -> 取主机名（带超时）
 async fn scan_one(ip: Ipv4Addr) -> Option<NetworkDevice> {
-    let t0 = Instant::now();
     // ping 检查是否在线（-c1 -W1：发1包，最多等1秒）
     if !ping_device(ip).await {
         return None;
     }
 
-    let t1 = Instant::now();
     // arp 缓存已在 ping 后命中，瞬时返回
     let mac = get_mac_address(ip).ok().flatten()?;
 
     // 主机名解析可能很慢（nmap），加超时避免拖慢整体
-    let t2 = Instant::now();
     let hostname =
         match tokio::time::timeout(Duration::from_secs(2), async { get_hostname(ip) }).await {
             Ok(ok) => ok.ok(),
@@ -140,7 +137,6 @@ impl NetworkScanner {
         net_devices: &[NetDevice],
     ) -> Result<Vec<NetworkDevice>, Box<dyn std::error::Error + Send>> {
         let mut result = Vec::new();
-        let overall_start = Instant::now();
 
         // 控制实际并发 fork 的进程数，避免一次性拉起上百个子进程导致抖动
         let concurrency = Arc::new(Semaphore::new(CONCURRENCY_LIMIT));
@@ -162,7 +158,6 @@ impl NetworkScanner {
                     let network = Ipv4Addr::new(ip.octets()[0], ip.octets()[1], ip.octets()[2], 0);
 
                     // 派发并发扫描任务（实际进程数受 Semaphore 限制）
-                    let net_start = Instant::now();
                     let mut tasks = Vec::new();
                     for i in 1..255 {
                         let target_ip = Ipv4Addr::new(
