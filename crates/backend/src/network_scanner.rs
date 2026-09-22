@@ -20,26 +20,19 @@ pub struct NetworkDevice {
 }
 
 /// 控制实际并发 fork 的进程数，避免一次性拉起上百个子进程导致系统抖动
-const CONCURRENCY_LIMIT: usize = 100;
+const CONCURRENCY_LIMIT: usize = 32;
 
 /// 扫描单个 IP：ping 判断在线 -> 取 MAC -> 取主机名（带超时）
 async fn scan_one(ip: Ipv4Addr) -> Option<NetworkDevice> {
     let t0 = Instant::now();
     // ping 检查是否在线（-c1 -W1：发1包，最多等1秒）
     if !ping_device(ip).await {
-        println!("[debug] {} ping 耗时 {:?}", ip, t0.elapsed());
         return None;
     }
 
     let t1 = Instant::now();
     // arp 缓存已在 ping 后命中，瞬时返回
     let mac = get_mac_address(ip).ok().flatten()?;
-    println!(
-        "[debug] {} mac 耗时 {:?} (总 {:?})",
-        ip,
-        t1.elapsed(),
-        t0.elapsed()
-    );
 
     // 主机名解析可能很慢（nmap），加超时避免拖慢整体
     let t2 = Instant::now();
@@ -48,18 +41,8 @@ async fn scan_one(ip: Ipv4Addr) -> Option<NetworkDevice> {
             Ok(ok) => ok.ok(),
             Err(_) => None, // 超时
         };
-    println!(
-        "[debug] {} hostname 耗时 {:?} (总 {:?})",
-        ip,
-        t2.elapsed(),
-        t0.elapsed()
-    );
 
-    Some(NetworkDevice {
-        ip: ip,
-        mac,
-        hostname,
-    })
+    Some(NetworkDevice { ip, mac, hostname })
 }
 
 /// 使用ping命令检查设备是否在线
@@ -68,7 +51,7 @@ async fn ping_device(ip: Ipv4Addr) -> bool {
         .arg("-c")
         .arg("1")
         .arg("-W")
-        .arg("0.2")
+        .arg("0.5")
         .arg(ip.to_string())
         .output();
 
@@ -141,10 +124,7 @@ fn get_hostname(ip: Ipv4Addr) -> Result<String, Box<dyn std::error::Error + Send
         }
     }
 
-    Err(Box::new(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "Failed to get hostname",
-    )))
+    Err(Box::new(std::io::Error::other("Failed to get hostname")))
 }
 
 impl NetworkScanner {
@@ -166,15 +146,6 @@ impl NetworkScanner {
         let concurrency = Arc::new(Semaphore::new(CONCURRENCY_LIMIT));
 
         for device in net_devices {
-            if device.device_name == "lo"
-                || device.device_name == "docker0"
-                || device.device_name == "lxcbr0"
-                || device.device_name == "virbr0"
-                || device.device_name == "easytier0"
-                || device.device_name.contains("veth")
-            {
-                continue;
-            }
             println!("Scanning device: {:?}", device);
             // 获取设备的网络范围
             for ip in &device.ips {
@@ -218,12 +189,6 @@ impl NetworkScanner {
                             result.push(device);
                         }
                     }
-                    println!(
-                        "[debug] 网段 {} 耗时 {:?} (整体 {:?})",
-                        network,
-                        net_start.elapsed(),
-                        overall_start.elapsed()
-                    );
                 } else {
                     println!("Invalid IP address: {}", ip_str);
                 }
@@ -233,12 +198,6 @@ impl NetworkScanner {
         // 更新网络设备列表
         let mut devices = self.network_devices.lock().await;
         *devices = result.clone();
-
-        println!(
-            "[debug] 整体扫描耗时 {:?}, 发现 {} 台设备",
-            overall_start.elapsed(),
-            result.len()
-        );
 
         Ok(result)
     }

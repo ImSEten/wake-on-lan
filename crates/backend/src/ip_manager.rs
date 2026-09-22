@@ -59,7 +59,7 @@ impl IpManager {
                             exe_dir.join("ip-mac.json").to_string_lossy().to_string()
                         };
                         let config_devices = load_ip_mac_mapping(&config_file);
-                        get_hostname_from_ip(&device.ip, &config_devices)
+                        get_hostname_from_config_ip(&device.ip, &config_devices)
                             .unwrap_or_else(|| "Unknown".to_string())
                     };
 
@@ -114,6 +114,17 @@ pub async fn get_local_net_info() -> std::io::Result<Vec<NetDevice>> {
     let mut args = vec!["addr".to_string(), "show".to_string()];
     let mut net_devices: Vec<NetDevice> = Vec::new();
     for device_name in devices_name {
+        if device_name == "lo"
+            || device_name == "docker0"
+            || device_name == "lxcbr0"
+            || device_name == "virbr0"
+            || device_name == "easytier0"
+            || device_name.contains("veth")
+            || device_name.contains("br-")
+            || device_name.contains("veth")
+        {
+            continue;
+        }
         args.push(device_name.clone());
         let (stdout, _stderr) =
             common::command::Command::run("ip".to_string(), args.clone()).await?;
@@ -166,6 +177,7 @@ fn parse_ipv4_addr(ip_addr_show: &str) -> Vec<String> {
             line.trim_start()
                 .strip_prefix("inet ")
                 .and_then(|s| s.split_whitespace().next())
+                .and_then(|s| s.split("/").next())
                 .map(|addr| addr.to_string()) // 将 &str 转换为 String
         })
         .collect::<Vec<String>>()
@@ -189,6 +201,7 @@ fn parse_ip_addr(ip_addr_show: &str) -> Vec<Ipv4Addr> {
     let ipv4s = parse_ipv4_addr(ip_addr_show);
     let mut ips: Vec<Ipv4Addr> = Vec::new();
     for ipv4 in ipv4s {
+        println!("IP: {}", ipv4);
         let ip = Ipv4Addr::from_str(ipv4.as_str()).unwrap();
 
         ips.push(ip);
@@ -238,7 +251,7 @@ pub async fn monitor_ip(ip_manager: Arc<IpManager>) -> Vec<JoinHandle<std::io::R
 }
 
 /// 从 ip-mac.json 中加载设备映射（ip -> hostname）
-fn load_ip_mac_mapping(file_path: &str) -> Vec<super::network_scanner::NetworkDevice> {
+pub fn load_ip_mac_mapping(file_path: &str) -> Vec<super::network_scanner::NetworkDevice> {
     let path = Path::new(file_path);
     if !path.exists() {
         return Vec::new();
@@ -254,7 +267,7 @@ fn load_ip_mac_mapping(file_path: &str) -> Vec<super::network_scanner::NetworkDe
 }
 
 /// 根据 ip 从设备映射中查找 hostname
-fn get_hostname_from_ip(
+fn get_hostname_from_config_ip(
     ip: &Ipv4Addr,
     devices: &[super::network_scanner::NetworkDevice],
 ) -> Option<String> {

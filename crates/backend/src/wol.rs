@@ -1,5 +1,6 @@
 use std::net::{Ipv4Addr, UdpSocket};
 use std::str::FromStr;
+use std::vec;
 
 use crate::ip_manager::IpManager;
 
@@ -52,7 +53,7 @@ pub fn wol_mac(mac_address: &str) -> Result<(), String> {
 pub async fn wol_hostname(ip_manager: &IpManager, hostname: &str) -> Result<(), String> {
     // 1. 使用IP管理器获取MAC地址
     let mac_address = ip_manager
-        .get_mac_by_hostname(&hostname)
+        .get_mac_by_hostname(hostname)
         .await
         .ok_or_else(|| format!("无法找到主机名 {} 对应的MAC地址", hostname))?;
 
@@ -75,12 +76,8 @@ fn send_wol_packet(mac_address: &str) -> Result<(), String> {
     validate_mac_address(mac_address)?;
 
     // 创建魔术包: 6字节的0xFF followed by 16次重复的MAC地址
-    let mut magic_packet = Vec::new();
-
     // 添加6字节的0xFF
-    for _ in 0..6 {
-        magic_packet.push(0xFF);
-    }
+    let mut magic_packet = vec![0xFF; 6];
 
     // 添加16次重复的MAC地址
     let mac_bytes = parse_mac_address(mac_address)?;
