@@ -122,7 +122,7 @@ pub async fn create_service(wol_server: WOLServer) {
             get(|| async {
                 // 返回主页
                 let html_content =
-                    tokio::fs::read_to_string("crates/wake-on-lan-server/static/index.html")
+                    tokio::fs::read_to_string("static/index.html")
                         .await
                         .unwrap_or_else(|_| "无法加载页面".to_string());
                 Html(html_content)
